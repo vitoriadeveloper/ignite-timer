@@ -11,15 +11,24 @@ import {
     StartCountdownButton,
     TaskInput,
 } from "./styles";
+import { useState } from "react";
 
 const newCicleFormSchema = zod.object({
     task: zod.string().min(1, "Informe a tarefa"),
     minutesAmount: zod.number().min(5).max(60),
 });
 
+interface Cycle {
+    id: string;
+    task: string;
+    minutesAmount: number;
+}
+
 type NewCicleFormData = zod.infer<typeof newCicleFormSchema>; // typeof é sempre que quiser usar uma var js no ts
 export function Home() {
-    const { register, handleSubmit, watch } = useForm({
+    const [cycles, setCycles] = useState<Cycle[]>([]);
+    const [activeCycleId, setActiveCycleId] = useState<string | null>(null);
+    const { register, handleSubmit, watch, reset } = useForm({
         resolver: zodResolver(newCicleFormSchema),
         defaultValues: {
             task: "",
@@ -28,8 +37,19 @@ export function Home() {
     });
 
     function handleCreateNewCycle(data: NewCicleFormData) {
-        console.log(data);
+        const newCycle: Cycle = {
+            id: String(new Date().getTime()),
+            task: data.task,
+            minutesAmount: data.minutesAmount,
+        };
+        setCycles((state) => [...state, newCycle]); // sempre que o valor de um estado depender do valor anterior, usar arrow function
+        setActiveCycleId(newCycle.id);
+        reset();
     }
+
+    const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
+
+    console.log(activeCycle);
 
     const task = watch("task");
     const isSubmitDisabled = !task;
