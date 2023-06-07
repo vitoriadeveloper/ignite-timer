@@ -1,6 +1,7 @@
-import { ReactNode, createContext, useState } from "react";
+import { ReactNode, createContext, useReducer, useState } from "react";
+import { cyclesReducer } from "../reducers/cycles";
 
-interface Cycle {
+export interface Cycle {
     id: string;
     task: string;
     minutesAmount: number;
@@ -25,14 +26,19 @@ interface CyclesContextType {
 interface CyclesContextProviderProps {
     children: ReactNode;
 }
+
 export const CyclesContext = createContext({} as CyclesContextType);
 
 export function CyclesContextProvider({
     children,
 }: CyclesContextProviderProps) {
-    const [cycles, setCycles] = useState<Cycle[]>([]);
-    const [activeCycleId, setActiveCycleId] = useState<string | null>(null);
+    const [cyclesState, dispatch] = useReducer(cyclesReducer, {
+        cycles: [],
+        activeCycleId: null,
+    });
+
     const [amountSecondsPassed, setAmountSecondsPassed] = useState(0);
+    const { activeCycleId, cycles } = cyclesState;
     const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
 
     function createNewCycle(data: CreateCycleData) {
@@ -42,37 +48,32 @@ export function CyclesContextProvider({
             minutesAmount: data.minutesAmount,
             startDate: new Date(),
         };
-        setCycles((state) => [...state, newCycle]); // sempre que o valor de um estado depender do valor anterior, usar arrow function
-        setActiveCycleId(newCycle.id);
+        dispatch({
+            type: "ADD_NEW_CYCLE",
+            payload: {
+                newCycle,
+            },
+        });
+
         setAmountSecondsPassed(0);
     }
 
     function interruptCurrentCycle() {
-        setCycles((state) =>
-            state.map((cycle) => {
-                if (cycle.id === activeCycleId) {
-                    return { ...cycle, interruptedDate: new Date() };
-                } else {
-                    return cycle;
-                }
-            }),
-        );
-        setActiveCycleId(null);
+        dispatch({
+            type: "INTERRUPT_CURRENT_CYCLE",
+            payload: {
+                activeCycleId,
+            },
+        });
     }
 
     function markCurrentCycleAsFinished() {
-        setCycles((state) =>
-            state.map((cycle) => {
-                if (cycle.id === activeCycleId) {
-                    return {
-                        ...cycle,
-                        finishedDate: new Date(),
-                    };
-                } else {
-                    return cycle;
-                }
-            }),
-        );
+        dispatch({
+            type: "MARK_CURRENT_CYCLE_AS_FINISHED",
+            payload: {
+                activeCycleId,
+            },
+        });
     }
     function setSecondsPassed(seconds: number) {
         setAmountSecondsPassed(seconds);
