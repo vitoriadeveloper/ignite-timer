@@ -1,10 +1,17 @@
-import { ReactNode, createContext, useReducer, useState } from "react";
+import {
+    ReactNode,
+    createContext,
+    useEffect,
+    useReducer,
+    useState,
+} from "react";
 import { cyclesReducer } from "../reducers/cycles/reducer";
 import {
     addNewCycleAction,
     interruptCycleAction,
     markCurrentCycleAsFinishedAction,
 } from "../reducers/cycles/actions";
+import { differenceInSeconds } from "date-fns";
 
 export interface Cycle {
     id: string;
@@ -37,14 +44,40 @@ export const CyclesContext = createContext({} as CyclesContextType);
 export function CyclesContextProvider({
     children,
 }: CyclesContextProviderProps) {
-    const [cyclesState, dispatch] = useReducer(cyclesReducer, {
-        cycles: [],
-        activeCycleId: null,
-    });
+    const [cyclesState, dispatch] = useReducer(
+        cyclesReducer,
+        {
+            cycles: [],
+            activeCycleId: null,
+        },
+        (initialState) => {
+            const storedStateAsJSON = localStorage.getItem(
+                "@ignite-timer:cycles-state-1.0.0",
+            );
+            if (storedStateAsJSON) {
+                return JSON.parse(storedStateAsJSON);
+            }
 
-    const [amountSecondsPassed, setAmountSecondsPassed] = useState(0);
+            return initialState;
+        },
+    );
     const { activeCycleId, cycles } = cyclesState;
     const activeCycle = cycles.find((cycle) => cycle.id === activeCycleId);
+    const [amountSecondsPassed, setAmountSecondsPassed] = useState(() => {
+        if (activeCycle) {
+            return differenceInSeconds(
+                new Date(),
+                new Date(activeCycle.startDate),
+            );
+        }
+        return 0;
+    });
+
+    useEffect(() => {
+        const stasteJSON = JSON.stringify(cyclesState);
+
+        localStorage.setItem("@ignite-timer:cycles-state-1.0.0", stasteJSON);
+    }, [cyclesState]);
 
     function createNewCycle(data: CreateCycleData) {
         const newCycle: Cycle = {
